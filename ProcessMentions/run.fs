@@ -19,6 +19,8 @@ open Newtonsoft.Json
 open System.Text.RegularExpressions
 open LinqToTwitter
 open System.IO
+open Microsoft.WindowsAzure.Storage
+open Microsoft.WindowsAzure.Storage.Table
 
 type Settings =
     { TwitterApiKey : string
@@ -48,6 +50,7 @@ type Mention =
     { Text : string
       UserMentions : UserMention array
       QuotedTweet : uint64
+      EmbedHtml : string
       Url : string
       CreatedAt : DateTime
       StatusID : uint64 }
@@ -92,6 +95,15 @@ module CodepointRequest =
 type Reply =
     { Codepoints : CodepointInfo array
       Mention : Mention }
+
+type RequestDataRow() =
+   inherit TableEntity()
+   member val CodepointJson = "" with get,set
+   member val Text = "" with get,set
+   member val Url = "" with get,set
+   member val StatusID = 0uL with get,set
+   member val CreatedAt = DateTimeOffset.UtcNow with get,set
+   member val EmbedHtml = "" with get,set
 
  module Unicode =
     let mutable private store : Dictionary<int, string> = null
@@ -164,6 +176,7 @@ type Reply =
 
 let Run(mention: Mention,
         replyQueue: ICollector<Reply>,
+        requestDataTable: ICollector<RequestDataRow>,
         log: TraceWriter,
         functionContext : ExecutionContext) =
     try
@@ -186,35 +199,50 @@ let Run(mention: Mention,
         authorizer.CredentialStore <- credentials
         new TwitterContext(authorizer)
 
-    match cpRequest with
-    | Blank -> ()
-    | PlainText(s) ->
-        let codepoints = Unicode.codepointInfo s
-        replyQueue.Add({ Mention = mention; Codepoints = codepoints })
-    | Tweet(id) ->
-        let tweet =
-            let idList = sprintf "%d" id
-            query {
-                for tweet in context.Status do
-                where (tweet.Type = StatusType.Lookup && tweet.TweetIDs = idList)
-                select tweet
-            } |> Seq.head
+    let reply = 
+        match cpRequest with
+        | Blank -> None
+        | PlainText(s) ->
+            let codepoints = Unicode.codepointInfo s
+            Some { Mention = mention; Codepoints = codepoints }
+        | Tweet(id) ->
+            let tweet =
+                let idList = sprintf "%d" id
+                query {
+                    for tweet in context.Status do
+                    where (tweet.Type = StatusType.Lookup && tweet.TweetIDs = idList)
+                    select tweet
+                } |> Seq.head
 
-        log.Info(sprintf "Getting codepoints for tweet %d: %O" tweet.StatusID tweet.Text)
-        let codepoints = Unicode.codepointInfo tweet.Text
-        replyQueue.Add({ Mention = mention; Codepoints = codepoints })
+            log.Info(sprintf "Getting codepoints for tweet %d: %O" tweet.StatusID tweet.Text)
+            let codepoints = Unicode.codepointInfo tweet.Text
+            Some { Mention = mention; Codepoints = codepoints }
 
-    | User(id) ->
-        let user =
-            let idList = sprintf "%d" id
-            query {
-                for u in context.User do
-                where (u.Type = UserType.Lookup && u.UserIdList = idList)
-                select u
-            } |> Seq.head
-        log.Info(sprintf "Getting codepoints for user %O: %O %O" user.ScreenNameResponse user.Name user.Description)
-        let codepoints = Unicode.codepointInfo (sprintf "%O %O %O" user.ScreenNameResponse user.Name user.Description)
-        replyQueue.Add({ Mention = mention; Codepoints = codepoints })
+        | User(id) ->
+            let user =
+                let idList = sprintf "%d" id
+                query {
+                    for u in context.User do
+                    where (u.Type = UserType.Lookup && u.UserIdList = idList)
+                    select u
+                } |> Seq.head
+            log.Info(sprintf "Getting codepoints for user %O: %O %O" user.ScreenNameResponse user.Name user.Description)
+            let codepoints = Unicode.codepointInfo (sprintf "%O %O %O" user.ScreenNameResponse user.Name user.Description)
+            Some { Mention = mention; Codepoints = codepoints }
+
+    match reply with
+    | None -> ()
+    | Some(r) ->
+        let dataRow = RequestDataRow(PartitionKey = (r.Mention.StatusID % 100uL).ToString(),
+                                     RowKey = r.Mention.StatusID.ToString(),
+                                     CodepointJson = JsonConvert.SerializeObject(r.Codepoints),
+                                     CreatedAt = DateTimeOffset(r.Mention.CreatedAt),
+                                     EmbedHtml = r.Mention.EmbedHtml,
+                                     StatusID = r.Mention.StatusID,
+                                     Text = r.Mention.Text,
+                                     Url = r.Mention.Url)
+        requestDataTable.Add(dataRow)
+        replyQueue.Add(r)
 
     with
     | e -> log.Error(e.ToString())

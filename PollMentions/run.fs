@@ -30,6 +30,7 @@ type Mention =
     { Text : string
       UserMentions : UserMention array
       QuotedTweet : uint64
+      EmbedHtml : string
       Url : string
       CreatedAt : DateTime
       StatusID : uint64 }
@@ -101,12 +102,22 @@ let Run(myTimer: TimerInfo,
                       Start = ume.Start
                       End = ume.End }
                 )
+            
+            log.Info("Getting embed info")
+            let embedInfo =
+                query {
+                    for tweet in context.Status do
+                    where (tweet.Type = StatusType.Oembed && tweet.ID = m.StatusID)
+                    select tweet.EmbeddedStatus
+                } |> Seq.head
+
             let mention = {
                 Text = if String.IsNullOrEmpty(m.Text) then "<none>" else m.Text
                 CreatedAt = m.CreatedAt
                 Url = sprintf "https://twitter.com/%O/status/%d" m.User.ScreenNameResponse m.StatusID
                 UserMentions = users
                 QuotedTweet = m.QuotedStatusID
+                EmbedHtml = embedInfo.Html
                 StatusID = m.StatusID
             }
             mentionQueue.Add(mention)
