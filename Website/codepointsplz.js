@@ -31,6 +31,14 @@ function Render(codepointData) {
     $("#codepoints").append(t);
 }
 
+function RenderError(errorMessage) {
+    var e = "<div class='error'>"
+    e += errorMessage;
+    e += "</div>";
+
+    $("#codepoints").append(e);
+}
+
 function Codepoints() {
     var id = getUrlParameter('tid');
     var url = backendUrl + "?tid=" + id;
@@ -41,7 +49,7 @@ function Codepoints() {
             Render(data);
         },
         error: function () {
-            alert("error getting codepoints");
+            RenderError("Error getting codepoint data");
         }
     });
 }
