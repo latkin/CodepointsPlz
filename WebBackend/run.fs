@@ -20,12 +20,20 @@ open System.Linq
 
 type RequestDataRow() =
    inherit TableEntity()
-   member val CodepointJson = "" with get,set
-   member val Text = "" with get,set
-   member val Url = "" with get,set
-   member val StatusID = 0uL with get,set
+   member val CodepointJson = null with get,set
+   member val TargetScreenNameCodepointJson = null with get,set
+   member val TargetDisplayNameCodepointJson = null with get,set
+   member val TargetSummaryCodepointJson = null with get,set
+   member val MentionText = null with get,set
+   member val TargetText = null with get,set
+   member val MentionUrl = null with get,set
+   member val MentionStatusID = 0uL with get,set
    member val CreatedAt = DateTimeOffset.UtcNow with get,set
-   member val EmbedHtml = "" with get,set
+   member val MentionEmbedHtml = null with get,set
+   member val TargetEmbedHtml = null with get,set
+   member val TargetScreenName = null with get,set
+   member val TargetDisplayName = null with get,set
+   member val TargetSummary = null with get,set
 
 [<CLIMutable>]
  type CodepointInfo =
@@ -34,7 +42,15 @@ type RequestDataRow() =
 
 type WebData = 
     { Codepoints : CodepointInfo array
-      EmbedHtml : string }
+      MentionEmbedHtml : string
+      Text : string
+      TargetEmbedHtml : string
+      ScreenName : string
+      DisplayName : string
+      Summary : string
+      ScreenNameCodepoints : CodepointInfo array
+      DisplayNameCodepoints : CodepointInfo array
+      SummaryCodepoints : CodepointInfo array }
 
 let Run(req: HttpRequestMessage,
         requestDataTable: IQueryable<RequestDataRow>,
@@ -60,7 +76,15 @@ let Run(req: HttpRequestMessage,
             match entries with
             | [| entry |] ->
                 let body = { Codepoints = JsonConvert.DeserializeObject<CodepointInfo[]>(entry.CodepointJson)
-                             EmbedHtml = entry.EmbedHtml }
+                             MentionEmbedHtml = entry.MentionEmbedHtml
+                             Text = entry.TargetText
+                             TargetEmbedHtml = entry.TargetEmbedHtml
+                             ScreenName = entry.TargetScreenName
+                             DisplayName = entry.TargetDisplayName
+                             Summary = entry.TargetSummary
+                             ScreenNameCodepoints = JsonConvert.DeserializeObject<CodepointInfo[]>(entry.TargetScreenNameCodepointJson)
+                             DisplayNameCodepoints = JsonConvert.DeserializeObject<CodepointInfo[]>(entry.TargetDisplayNameCodepointJson)
+                             SummaryCodepoints = JsonConvert.DeserializeObject<CodepointInfo[]>(entry.TargetSummaryCodepointJson) }
                 let response = req.CreateResponse(HttpStatusCode.OK)
                 response.Content <- new StringContent(JsonConvert.SerializeObject(body))
                 return response

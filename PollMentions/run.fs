@@ -22,6 +22,7 @@ open LinqToTwitter
 [<CLIMutable>]
 type UserMention =
     { UserID : uint64
+      ScreenName : string
       Start : int
       End : int }
 
@@ -30,6 +31,7 @@ type Mention =
     { Text : string
       UserMentions : UserMention array
       QuotedTweet : uint64
+      InReplyToTweet : uint64
       EmbedHtml : string
       Url : string
       CreatedAt : DateTime
@@ -99,6 +101,7 @@ let Run(myTimer: TimerInfo,
                 m.Entities.UserMentionEntities.ToArray()
                 |> Array.map (fun ume ->
                     { UserID = ume.Id
+                      ScreenName = ume.ScreenName
                       Start = ume.Start
                       End = ume.End }
                 )
@@ -117,6 +120,7 @@ let Run(myTimer: TimerInfo,
                 Url = sprintf "https://twitter.com/%O/status/%d" m.User.ScreenNameResponse m.StatusID
                 UserMentions = users
                 QuotedTweet = m.QuotedStatusID
+                InReplyToTweet = m.InReplyToStatusID
                 EmbedHtml = embedInfo.Html
                 StatusID = m.StatusID
             }

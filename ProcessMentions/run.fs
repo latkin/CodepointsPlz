@@ -42,6 +42,7 @@ type Settings =
 [<CLIMutable>]
 type UserMention =
     { UserID : uint64
+      ScreenName : string
       Start : int
       End : int }
 
@@ -50,6 +51,7 @@ type Mention =
     { Text : string
       UserMentions : UserMention array
       QuotedTweet : uint64
+      InReplyToTweet : uint64
       EmbedHtml : string
       Url : string
       CreatedAt : DateTime
@@ -62,29 +64,44 @@ type CodepointRequest =
     | Blank
 
 module CodepointRequest =
-    let private afterMentionPattern = """@codepointsplz[ \r\n]*(.+?)$"""
 
-    let trim (s:String) = s.Trim(' ','\r', '\n')
-
-    let analyze (m : Mention) =
-        if m.QuotedTweet <> 0uL then
-            Tweet(m.QuotedTweet)
+    let private trim (s:String) = s.Trim(' ','\r', '\n')
+    let private textAfterMention text screenName =
+        let afterMentionPattern = sprintf """@%s[ \r\n]*(.+?)$""" screenName
+        let m = Regex.Match(text, afterMentionPattern, RegexOptions.Singleline ||| RegexOptions.IgnoreCase)
+        if m.Success then
+            m.Groups.[1].Value |> trim
         else
-            match m.UserMentions |> Array.tryLast with
-            // no mentions -- should not be possible since we only run
-            // this against tweets where we are mentioned
-            | None -> Blank
+            ""
 
-            // we are the last mention -- treat everything after our mention as plain text
-            | Some(um) when um.UserID = 971963654047330308uL ->
-                match Regex.Match(m.Text, afterMentionPattern, RegexOptions.Singleline ||| RegexOptions.IgnoreCase) with
-                | m when not m.Success -> Blank
-                | m ->
-                    let afterMention = m.Groups.[1].Value |> trim
-                    PlainText(afterMention)
-        
-            // somebody else is the last mention -- consider this a request to analyze their profile
-            | Some(um) -> User(um.UserID)
+    let analyze (mention : Mention) =
+        match mention.UserMentions |> Array.tryLast with
+        // no mentions -- should not be possible since we only run
+        // this against tweets where we are mentioned
+        | None -> Blank
+        // we are the last mention -- normal case
+        | Some(um) -> // when um.UserID = 971963654047330308uL ->
+
+            match textAfterMention mention.Text "codepointsplz" with
+            // our mention is at the very end, ignore
+            | "" -> Blank
+            | afterMention ->
+                // our mention is not at the end, and there is a quoted tweet.
+                // assume this is the target
+                if mention.QuotedTweet <> 0uL then
+                    Tweet(mention.QuotedTweet)
+                else
+                    // we are mentioned in reply to a tweet, with text "this one"
+                    // assume the replied-to tweet is the target
+                    if mention.InReplyToTweet <> 0uL && afterMention.ToLower() = "this one" then
+                        Tweet(mention.InReplyToTweet)
+                    // the only content after our mention is a mention of another user
+                    // assume this is a request to analyze their profile
+                    elif afterMention.ToLower() = ("@" + um.ScreenName.ToLower()) then
+                        User(um.UserID)
+                    // otherwise, assume the text of the tweet after our mention is the target
+                    else
+                        PlainText(afterMention)
 
 [<CLIMutable>]
  type CodepointInfo =
@@ -93,17 +110,36 @@ module CodepointRequest =
 
 [<CLIMutable>]
 type Reply =
-    { Codepoints : CodepointInfo array
-      Mention : Mention }
+    { Mention : Mention
+
+      TargetTweetEmbedHtml : string
+
+      TargetText : string
+      Codepoints : CodepointInfo array
+
+      TargetUserScreenName : string
+      TargetUserDisplayName : string
+      TargetUserSummary : string
+      UserScreenNameCodepoints : CodepointInfo array
+      UserDisplayNameCodepoints : CodepointInfo array
+      UserSummaryCodepoints : CodepointInfo array }
 
 type RequestDataRow() =
    inherit TableEntity()
-   member val CodepointJson = "" with get,set
-   member val Text = "" with get,set
-   member val Url = "" with get,set
-   member val StatusID = 0uL with get,set
+   member val CodepointJson = null with get,set
+   member val TargetScreenNameCodepointJson = null with get,set
+   member val TargetDisplayNameCodepointJson = null with get,set
+   member val TargetSummaryCodepointJson = null with get,set
+   member val MentionText = null with get,set
+   member val TargetText = null with get,set
+   member val MentionUrl = null with get,set
+   member val MentionStatusID = 0uL with get,set
    member val CreatedAt = DateTimeOffset.UtcNow with get,set
-   member val EmbedHtml = "" with get,set
+   member val MentionEmbedHtml = null with get,set
+   member val TargetEmbedHtml = null with get,set
+   member val TargetScreenName = null with get,set
+   member val TargetDisplayName = null with get,set
+   member val TargetSummary = null with get,set
 
  module Unicode =
     let mutable private store : Dictionary<int, string> = null
@@ -204,7 +240,17 @@ let Run(mention: Mention,
         | Blank -> None
         | PlainText(s) ->
             let codepoints = Unicode.codepointInfo s
-            Some { Mention = mention; Codepoints = codepoints }
+            Some { Mention = mention
+                   TargetTweetEmbedHtml = null
+                   TargetText = s
+                   Codepoints = codepoints
+                   TargetUserScreenName = null
+                   TargetUserDisplayName = null
+                   TargetUserSummary = null
+                   UserScreenNameCodepoints = null 
+                   UserDisplayNameCodepoints = null
+                   UserSummaryCodepoints = null }
+
         | Tweet(id) ->
             let tweet =
                 let idList = sprintf "%d" id
@@ -214,9 +260,25 @@ let Run(mention: Mention,
                     select tweet
                 } |> Seq.head
 
+            let embedInfo =
+                query {
+                    for tweet in context.Status do
+                    where (tweet.Type = StatusType.Oembed && tweet.ID = id)
+                    select tweet.EmbeddedStatus
+                } |> Seq.head
+
             log.Info(sprintf "Getting codepoints for tweet %d: %O" tweet.StatusID tweet.Text)
             let codepoints = Unicode.codepointInfo tweet.Text
-            Some { Mention = mention; Codepoints = codepoints }
+            Some { Mention = mention
+                   TargetTweetEmbedHtml = embedInfo.Html
+                   TargetText = tweet.Text
+                   Codepoints = codepoints
+                   TargetUserScreenName = null
+                   TargetUserDisplayName = null
+                   TargetUserSummary = null
+                   UserScreenNameCodepoints = null 
+                   UserDisplayNameCodepoints = null
+                   UserSummaryCodepoints = null }
 
         | User(id) ->
             let user =
@@ -227,8 +289,16 @@ let Run(mention: Mention,
                     select u
                 } |> Seq.head
             log.Info(sprintf "Getting codepoints for user %O: %O %O" user.ScreenNameResponse user.Name user.Description)
-            let codepoints = Unicode.codepointInfo (sprintf "%O %O %O" user.ScreenNameResponse user.Name user.Description)
-            Some { Mention = mention; Codepoints = codepoints }
+            Some { Mention = mention
+                   TargetTweetEmbedHtml = null
+                   TargetText = null
+                   Codepoints = null
+                   TargetUserScreenName = user.ScreenNameResponse
+                   TargetUserDisplayName = user.Name
+                   TargetUserSummary = user.Description
+                   UserScreenNameCodepoints = Unicode.codepointInfo user.ScreenNameResponse
+                   UserDisplayNameCodepoints = Unicode.codepointInfo user.Name
+                   UserSummaryCodepoints = Unicode.codepointInfo user.Description }
 
     match reply with
     | None -> ()
@@ -236,15 +306,21 @@ let Run(mention: Mention,
         let dataRow = RequestDataRow(PartitionKey = (r.Mention.StatusID % 100uL).ToString(),
                                      RowKey = r.Mention.StatusID.ToString(),
                                      CodepointJson = JsonConvert.SerializeObject(r.Codepoints),
+                                     TargetText = r.TargetText,
+                                     TargetScreenNameCodepointJson = JsonConvert.SerializeObject(r.UserScreenNameCodepoints),
+                                     TargetDisplayNameCodepointJson = JsonConvert.SerializeObject(r.UserDisplayNameCodepoints),
+                                     TargetSummaryCodepointJson = JsonConvert.SerializeObject(r.UserSummaryCodepoints),
+                                     TargetEmbedHtml = r.TargetTweetEmbedHtml,
+                                     TargetScreenName = r.TargetUserScreenName,
+                                     TargetDisplayName = r.TargetUserDisplayName,
+                                     TargetSummary = r.TargetUserSummary,
                                      CreatedAt = DateTimeOffset(r.Mention.CreatedAt),
-                                     EmbedHtml = r.Mention.EmbedHtml,
-                                     StatusID = r.Mention.StatusID,
-                                     Text = r.Mention.Text,
-                                     Url = r.Mention.Url)
+                                     MentionEmbedHtml = r.Mention.EmbedHtml,
+                                     MentionStatusID = r.Mention.StatusID,
+                                     MentionText = r.Mention.Text,
+                                     MentionUrl = r.Mention.Url)
         requestDataTable.Add(dataRow)
         replyQueue.Add(r)
 
     with
     | e -> log.Error(e.ToString())
-
-

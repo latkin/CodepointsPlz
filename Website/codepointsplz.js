@@ -33,11 +33,11 @@ function EscapeHtml(unsafe) {
          .replace(/'/g, "&#039;");
  }
 
-function Render(codepointData) {
+function CodepointTable(codepoints) {
     var t = "<table>"
     t += "<tr><th>Codepoint</th><th>Name</th><th>Value</th></tr>";
 
-    $.each(codepointData.Codepoints, function (i, codepoint) {
+    $.each(codepoints, function (i, codepoint) {
         t += "<tr>";
         t += "<td>" + FormatCodepointCode(codepoint.Codepoint) + "</td>";
         t += "<td>" + codepoint.Name + "</td>";
@@ -47,9 +47,38 @@ function Render(codepointData) {
 
     t += "</table>";
 
-    var tweetHtml = codepointData.EmbedHtml.replace("<blockquote class=\"twitter-tweet\"", "<blockquote class=\"twitter-tweet tw-align-center\"");
-    $("#codepoints").append(tweetHtml);
-    $("#codepoints").append(t);
+    return t;
+}
+function Render(codepointData) {
+    var mentionHtml = codepointData.MentionEmbedHtml.replace("<blockquote class=\"twitter-tweet\"", "<blockquote class=\"twitter-tweet tw-align-center\"");
+    $("#codepoints").append(mentionHtml);
+
+    if (codepointData.Codepoints && !codepointData.TargetEmbedHtml) {
+        // single tweet
+        var table = CodepointTable(codepointData.Codepoints);
+        $("#codepoints").append(table);
+    } else if (codepointData.Codepoints && codepointData.TargetEmbedHtml) {
+        // quoted or replied tweet
+        $("#codepoints").append("<h3>Referenced tweet</h3>");
+        var referenceHtml = codepointData.TargetEmbedHtml.replace("<blockquote class=\"twitter-tweet\"", "<blockquote class=\"twitter-tweet tw-align-center\"");
+        $("#codepoints").append(referenceHtml);
+        
+        var table = CodepointTable(codepointData.Codepoints);
+        $("#codepoints").append(table);
+    } else if (codepointData.ScreenName) {
+        // user profile
+        $("#codepoints").append("<h3>Screen Name</h3>");
+        $("#codepoints").append("<div><p>" + EscapeHtml(codepointData.ScreenName) + "</p></div>");
+        $("#codepoints").append(CodepointTable(codepointData.ScreenNameCodepoints));
+
+        $("#codepoints").append("<h3>Display Name</h3>");
+        $("#codepoints").append("<div><p>" + EscapeHtml(codepointData.DisplayName) + "</p></div>");
+        $("#codepoints").append(CodepointTable(codepointData.DisplayNameCodepoints));
+
+        $("#codepoints").append("<h3>Description</h3>");
+        $("#codepoints").append("<div><p>" + EscapeHtml(codepointData.Summary) + "</p></div>");
+        $("#codepoints").append(CodepointTable(codepointData.SummaryCodepoints));
+    }
 }
 
 function RenderError(errorMessage) {
