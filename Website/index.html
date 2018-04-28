@@ -4,32 +4,106 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Codepoints</title>
+    <title>Tweet codepoints</title>
     <style>
+        body {
+            font-family: Helvetica, Roboto, "Segoe UI", Calibri, sans-serif;
+            font-size: 16px;
+            color: rgb(28, 32, 34);
+        }
+
         table {
             border-collapse: collapse;
             margin: auto;
+            width: 100%;
+            text-align:left;
+        }
+
+        .codepoint-table-border {
+            max-width: 500px;
+            min-width: 220px;
+            margin: auto;
+        }
+        .codepoint-table {
+            margin: 1px;
+            padding: 20px;
+            border:1px;
+            border-color: rgb(225, 232, 237);
+            border-style: solid;
+            border-radius: 5px;
         }
 
         table,
         th,
         td {
-            border: 1px solid black;
-            padding: 0.25em;
+            padding: 0.2em;
+            border-bottom: 1px solid rgb(225, 232, 237)
         }
 
         #codepoints {
             text-align: center;
         }
-        h1 {
-            text-align: center;
+
+        #loader span {
+            animation: loader 1s linear infinite 0s;
+            opacity: 0;
+             position:absolute;
+             text-indent:-2em;
+        }
+
+        #loader span:nth-child(2) {
+            animation-delay: 0.142857142857143s;
+        }
+
+        #loader span:nth-child(3) {
+            animation-delay: 0.285714285714286s;
+        }
+
+        #loader span:nth-child(4) {
+            animation-delay: 0.428571428571429s;
+        }
+
+        #loader span:nth-child(5) {
+            animation-delay: 0.571428571428571s;
+        }
+
+        #loader span:nth-child(6) {
+            animation-delay: 0.714285714285714s;
+        }
+
+        #loader span:nth-child(7) {
+            animation-delay: 0.857142857142857s;
+        }
+
+        @keyframes loader {
+            0% {
+                opacity: 1;
+            }
+            14.28% {
+                opacity: 1;
+            }
+            14.29% {
+                opacity: 0;
+            }
+            100% {
+                opacity: 0;
+            }
         }
     </style>
 </head>
 
 <body>
-    <h1>Codepoints</h1>
-    <div id="codepoints" />
+    <div id="codepoints">
+        <div id="loader">
+            <span>�oading</span>
+            <span>L�ading</span>
+            <span>Lo�ding</span>
+            <span>Loa�ing</span>
+            <span>Load�ng</span>
+            <span>Loadi�g</span>
+            <span>Loadin�</span>
+        </div>
+    </div>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
     <script type="text/javascript" src="codepointsplz.js"></script>
     <script type="text/javascript">Codepoints();</script>

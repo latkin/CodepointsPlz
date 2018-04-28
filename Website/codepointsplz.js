@@ -34,7 +34,7 @@ function EscapeHtml(unsafe) {
  }
 
 function CodepointTable(codepoints) {
-    var t = "<table>"
+    var t = "<div class='codepoint-table-border'><div class='codepoint-table'><table>"
     t += "<tr><th>Codepoint</th><th>Name</th><th>Value</th></tr>";
 
     $.each(codepoints, function (i, codepoint) {
@@ -45,7 +45,7 @@ function CodepointTable(codepoints) {
         t += "</tr>";
     });
 
-    t += "</table>";
+    t += "</table></div></div>";
 
     return t;
 }
@@ -100,9 +100,11 @@ function Codepoints() {
         headers: {},
         dataType: "json",
         success: function (data, status, xhr) {
+            $("#loader").remove();
             Render(data);
         },
         error: function () {
+            $("#loader").remove();
             RenderError("Error getting codepoint data");
         }
     });
