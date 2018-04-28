@@ -15,7 +15,7 @@ var getUrlParameter = function getUrlParameter(sParam) {
 };
 
 function FormatCodepointCode(codepoint) {
-    var hex = Number(codepoint).toString(16);
+    var hex = Number(codepoint).toString(16).toUpperCase();
 
     while (hex.length < 4) {
         hex = "0" + hex;
@@ -24,20 +24,31 @@ function FormatCodepointCode(codepoint) {
     return "U+" + hex;
 }
 
+function EscapeHtml(unsafe) {
+    return unsafe
+         .replace(/&/g, "&amp;")
+         .replace(/</g, "&lt;")
+         .replace(/>/g, "&gt;")
+         .replace(/"/g, "&quot;")
+         .replace(/'/g, "&#039;");
+ }
+
 function Render(codepointData) {
     var t = "<table>"
-    t += "<tr><th>Codepoint</th><th>Name</th></tr>";
+    t += "<tr><th>Codepoint</th><th>Name</th><th>Value</th></tr>";
 
     $.each(codepointData.Codepoints, function (i, codepoint) {
         t += "<tr>";
         t += "<td>" + FormatCodepointCode(codepoint.Codepoint) + "</td>";
         t += "<td>" + codepoint.Name + "</td>";
+        t += "<td>" + EscapeHtml(String.fromCodePoint(codepoint.Codepoint)) + "</td>";
         t += "</tr>";
     });
 
     t += "</table>";
 
-    $("#codepoints").append(codepointData.EmbedHtml);
+    var tweetHtml = codepointData.EmbedHtml.replace("<blockquote class=\"twitter-tweet\"", "<blockquote class=\"twitter-tweet tw-align-center\"");
+    $("#codepoints").append(tweetHtml);
     $("#codepoints").append(t);
 }
 
