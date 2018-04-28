@@ -54,6 +54,7 @@ type Mention =
       InReplyToTweet : uint64
       EmbedHtml : string
       Url : string
+      ScreenName : string
       CreatedAt : DateTime
       StatusID : uint64 }
 
@@ -211,7 +212,7 @@ type RequestDataRow() =
         info.ToArray()
 
 let Run(mention: Mention,
-        replyQueue: ICollector<Reply>,
+        replyQueue: ICollector<Mention>,
         requestDataTable: ICollector<RequestDataRow>,
         log: TraceWriter,
         functionContext : ExecutionContext) =
@@ -320,7 +321,7 @@ let Run(mention: Mention,
                                      MentionText = r.Mention.Text,
                                      MentionUrl = r.Mention.Url)
         requestDataTable.Add(dataRow)
-        replyQueue.Add(r)
+        replyQueue.Add(mention)
 
     with
     | e -> log.Error(e.ToString())

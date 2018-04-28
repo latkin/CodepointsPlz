@@ -34,6 +34,7 @@ type Mention =
       InReplyToTweet : uint64
       EmbedHtml : string
       Url : string
+      ScreenName : string
       CreatedAt : DateTime
       StatusID : uint64 }
 
@@ -118,6 +119,7 @@ let Run(myTimer: TimerInfo,
                 Text = if String.IsNullOrEmpty(m.Text) then "<none>" else m.Text
                 CreatedAt = m.CreatedAt
                 Url = sprintf "https://twitter.com/%O/status/%d" m.User.ScreenNameResponse m.StatusID
+                ScreenName = m.User.ScreenNameResponse
                 UserMentions = users
                 QuotedTweet = m.QuotedStatusID
                 InReplyToTweet = m.InReplyToStatusID

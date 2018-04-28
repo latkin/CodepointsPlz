@@ -13,7 +13,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Website", "Website", "{260F
 		Website\index.html = Website\index.html
 	EndProjectSection
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "WebBackend", "WebBackend\WebBackend.fsproj", "{568BB27D-81CA-4044-AEE8-1AF4F4B9A3B3}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "WebBackend", "WebBackend\WebBackend.fsproj", "{568BB27D-81CA-4044-AEE8-1AF4F4B9A3B3}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "SendReply", "SendReply\SendReply.fsproj", "{DC7EA31A-9915-4765-9535-5CCFCCC3F016}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +35,10 @@ Global
 		{568BB27D-81CA-4044-AEE8-1AF4F4B9A3B3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{568BB27D-81CA-4044-AEE8-1AF4F4B9A3B3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{568BB27D-81CA-4044-AEE8-1AF4F4B9A3B3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DC7EA31A-9915-4765-9535-5CCFCCC3F016}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DC7EA31A-9915-4765-9535-5CCFCCC3F016}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DC7EA31A-9915-4765-9535-5CCFCCC3F016}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DC7EA31A-9915-4765-9535-5CCFCCC3F016}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
