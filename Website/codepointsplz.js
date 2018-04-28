@@ -14,13 +14,23 @@ var getUrlParameter = function getUrlParameter(sParam) {
     }
 };
 
+function FormatCodepointCode(codepoint) {
+    var hex = Number(codepoint).toString(16);
+
+    while (hex.length < 4) {
+        hex = "0" + hex;
+    }
+
+    return "U+" + hex;
+}
+
 function Render(codepointData) {
     var t = "<table>"
     t += "<tr><th>Codepoint</th><th>Name</th></tr>";
 
     $.each(codepointData.Codepoints, function (i, codepoint) {
         t += "<tr>";
-        t += "<td>" + codepoint.Codepoint + "</td>";
+        t += "<td>" + FormatCodepointCode(codepoint.Codepoint) + "</td>";
         t += "<td>" + codepoint.Name + "</td>";
         t += "</tr>";
     });
@@ -41,6 +51,10 @@ function RenderError(errorMessage) {
 
 function Codepoints() {
     var id = getUrlParameter('tid');
+    if (id === undefined) {
+        RenderError("Tweet ID not provided");
+    }
+
     var url = backendUrl + "?tid=" + id;
     $.ajax(url, {
         headers: {},
