@@ -26,7 +26,8 @@ type Settings =
     { TwitterApiKey : string
       TwitterApiSecret : string
       TwitterAccessToken : string
-      TwitterAccessTokenSecret : string} with
+      TwitterAccessTokenSecret : string
+      BitlyAccessToken : string } with
 
     static member load () = 
         { TwitterApiKey =
@@ -37,6 +38,8 @@ type Settings =
             Environment.GetEnvironmentVariable("APPSETTING_twitteraccesstoken", EnvironmentVariableTarget.Process)
           TwitterAccessTokenSecret =
             Environment.GetEnvironmentVariable("APPSETTING_twitteraccesstokensecret", EnvironmentVariableTarget.Process)
+          BitlyAccessToken =
+            Environment.GetEnvironmentVariable("APPSETTING_bitlyaccesstoken", EnvironmentVariableTarget.Process)
         }
 
 [<CLIMutable>]
@@ -58,6 +61,26 @@ type Mention =
       CreatedAt : DateTime
       StatusID : uint64 }
 
+let shorten url settings (log: TraceWriter)=
+    let bitlyUrl = 
+        sprintf "https://api-ssl.bitly.com/v3/shorten?access_token=%s&longUrl=%s&format=txt" settings.BitlyAccessToken (Uri.EscapeDataString(url))
+
+    let response =
+        (new HttpClient()).GetAsync(bitlyUrl)
+        |> Async.AwaitTask
+        |> Async.RunSynchronously
+
+    let content =
+        response.Content.ReadAsStringAsync()
+        |> Async.AwaitTask
+        |> Async.RunSynchronously
+    
+    if response.IsSuccessStatusCode then
+        content.Trim(' ', '\r', '\n')
+    else
+        log.Error(sprintf "Got error %O from Bitly - %s" response.StatusCode (content.Trim(' ', '\r', '\n')))
+        url
+
 let Run(mention: Mention,
         log: TraceWriter) =
     log.Info(sprintf "Replying to mention %O" mention.Url)
@@ -73,8 +96,11 @@ let Run(mention: Mention,
         authorizer.CredentialStore <- credentials
         new TwitterContext(authorizer)
 
+    let fullUrl = sprintf "https://latkin.github.io/CodepointsPlz/Website/?tid=%d" mention.StatusID
+    let shortUrl = shorten fullUrl settings log
+
     let status = 
-        context.ReplyAsync(mention.StatusID, sprintf "@%s https://latkin.github.io/CodepointsPlz/Website/?tid=%d" mention.ScreenName mention.StatusID)
+        context.ReplyAsync(mention.StatusID, sprintf "@%s ➡ %s ⬅" mention.ScreenName shortUrl)
         |> Async.AwaitTask
         |> Async.RunSynchronously
     
