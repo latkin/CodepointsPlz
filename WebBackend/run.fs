@@ -65,7 +65,7 @@ let Run(req: HttpRequestMessage,
             let id = idParam.Value
             log.Info(sprintf "Loading page for tid %O" id)
 
-            let partitionKey = id.Substring(id.Length - 2, 2)
+            let partitionKey = ((uint64 id) % 100uL).ToString()
             let entries = 
                 query {
                     for row in requestDataTable do
