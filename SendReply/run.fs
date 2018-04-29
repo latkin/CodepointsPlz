@@ -100,7 +100,7 @@ let Run(mention: Mention,
     let shortUrl = shorten fullUrl settings log
 
     let status = 
-        context.ReplyAsync(mention.StatusID, sprintf "@%s ➡ %s ⬅" mention.ScreenName shortUrl)
+        context.ReplyAsync(mention.StatusID, sprintf "@%s ➡️ %s ⬅️" mention.ScreenName shortUrl)
         |> Async.AwaitTask
         |> Async.RunSynchronously
     
