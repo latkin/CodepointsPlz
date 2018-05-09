@@ -175,9 +175,9 @@ function Codepoints() {
 
             window.status = "print_ready";
         },
-        error: function () {
+        error: function(xhr, status, error) {
             $("#loader").remove();
-            RenderError("Error getting codepoint data");
+            RenderError("Error getting codepoint data: [" + xhr.responseText + "][" + status + "][" + error + "]");
             window.status = "print_ready";
         }
     });
