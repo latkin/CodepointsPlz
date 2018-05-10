@@ -112,13 +112,13 @@ let Run(myTimer: TimerInfo,
         | 0uL ->
             query {
                 for tweet in context.Status do
-                where (tweet.Type = StatusType.Mentions)
+                where (tweet.Type = StatusType.Mentions && (int tweet.TweetMode) = 1)
                 select tweet
             }
         | id ->
             query {
                 for tweet in context.Status do
-                where (tweet.Type = StatusType.Mentions && tweet.SinceID = id)
+                where (tweet.Type = StatusType.Mentions && tweet.SinceID = id  && (int tweet.TweetMode) = 1)
                 where (tweet.StatusID <> id)
                 select tweet
             }
@@ -139,7 +139,7 @@ let Run(myTimer: TimerInfo,
             let embedInfo =
                 query {
                     for tweet in context.Status do
-                    where (tweet.Type = StatusType.Oembed && tweet.ID = m.StatusID)
+                    where (tweet.Type = StatusType.Oembed && tweet.ID = m.StatusID && (int tweet.TweetMode) = 1)
                     select tweet.EmbeddedStatus
                 } |> Seq.head
 

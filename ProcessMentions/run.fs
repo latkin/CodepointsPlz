@@ -260,22 +260,22 @@ let Run(mention: Mention,
                 let idList = sprintf "%d" id
                 query {
                     for tweet in context.Status do
-                    where (tweet.Type = StatusType.Lookup && tweet.TweetIDs = idList)
+                    where (tweet.Type = StatusType.Lookup && tweet.TweetIDs = idList && (int tweet.TweetMode) = 1)
                     select tweet
                 } |> Seq.head
 
             let embedInfo =
                 query {
                     for tweet in context.Status do
-                    where (tweet.Type = StatusType.Oembed && tweet.ID = id)
+                    where (tweet.Type = StatusType.Oembed && tweet.ID = id && (int tweet.TweetMode) = 1)
                     select tweet.EmbeddedStatus
                 } |> Seq.head
 
-            log.Info(sprintf "Getting codepoints for tweet %d: %O" tweet.StatusID tweet.Text)
-            let codepoints = Unicode.codepointInfo tweet.Text
+            log.Info(sprintf "Getting codepoints for tweet %d: %O" tweet.StatusID tweet.FullText)
+            let codepoints = Unicode.codepointInfo tweet.FullText
             Some { Mention = mention
                    TargetTweetEmbedHtml = embedInfo.Html
-                   TargetText = tweet.Text
+                   TargetText = tweet.FullText
                    Codepoints = codepoints
                    TargetUserScreenName = null
                    TargetUserDisplayName = null
