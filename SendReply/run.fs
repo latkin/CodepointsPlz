@@ -21,13 +21,17 @@ open LinqToTwitter
 open System.IO
 open Microsoft.WindowsAzure.Storage
 open Microsoft.WindowsAzure.Storage.Table
+open System.Security.Cryptography
+open System.Text
 
 type Settings =
     { TwitterApiKey : string
       TwitterApiSecret : string
       TwitterAccessToken : string
       TwitterAccessTokenSecret : string
-      BitlyAccessToken : string } with
+      BitlyAccessToken : string
+      ScreenshotApiKey : string
+      ScreenshotApiSecret : string } with
 
     static member load () = 
         { TwitterApiKey =
@@ -40,6 +44,10 @@ type Settings =
             Environment.GetEnvironmentVariable("APPSETTING_twitteraccesstokensecret", EnvironmentVariableTarget.Process)
           BitlyAccessToken =
             Environment.GetEnvironmentVariable("APPSETTING_bitlyaccesstoken", EnvironmentVariableTarget.Process)
+          ScreenshotApiKey = 
+            Environment.GetEnvironmentVariable("APPSETTING_screenshotapikey", EnvironmentVariableTarget.Process)
+          ScreenshotApiSecret = 
+            Environment.GetEnvironmentVariable("APPSETTING_screenshotapisecret", EnvironmentVariableTarget.Process)
         }
 
 [<CLIMutable>]
@@ -81,6 +89,20 @@ let shorten url settings (log: TraceWriter)=
         log.Error(sprintf "Got error %O from Bitly - %s" response.StatusCode (content.Trim(' ', '\r', '\n')))
         url
 
+let getImage targetUrl settings (log: TraceWriter) =
+
+    let urlParams = sprintf "url=%s&vw=500&vh=10&waitFor=.codepoint-table&full=true" (Uri.EscapeDataString(targetUrl))
+    let hashTarget = sprintf "%s%s" settings.ScreenshotApiSecret urlParams
+    let hash = BitConverter.ToString(MD5.Create().ComputeHash(Encoding.UTF8.GetBytes(hashTarget))).Replace("-", "").ToLower()
+    let screenshotUrl =
+        sprintf "https://cdn.capture.techulus.in/%s/%s/Image?%s" settings.ScreenshotApiKey hash urlParams
+    
+    log.Info(sprintf "Getting screenshot from %s" screenshotUrl)
+    async {
+        let! response = (new HttpClient()).GetAsync(screenshotUrl) |> Async.AwaitTask
+        return! response.Content.ReadAsByteArrayAsync() |> Async.AwaitTask
+    } |> Async.RunSynchronously
+
 let Run(mention: Mention,
         log: TraceWriter) =
     log.Info(sprintf "Replying to mention %O" mention.Url)
@@ -98,9 +120,16 @@ let Run(mention: Mention,
 
     let fullUrl = sprintf "https://latkin.github.io/CodepointsPlz/Website/?tid=%d" mention.StatusID
     let shortUrl = shorten fullUrl settings log
+    let imageBytes = getImage (sprintf "%s&to" fullUrl) settings log
+
+    log.Info("Got screenshot, uploading to Twitter")
+    let media = 
+            context.UploadMediaAsync(imageBytes, "image/png", "tweet_image")
+            |> Async.AwaitTask
+            |> Async.RunSynchronously
 
     let status = 
-        context.ReplyAsync(mention.StatusID, sprintf "@%s ➡️ %s ⬅️" mention.ScreenName shortUrl)
+        context.ReplyAsync(mention.StatusID, sprintf "@%s ➡️ %s ⬅️" mention.ScreenName shortUrl, [|media.MediaID|])
         |> Async.AwaitTask
         |> Async.RunSynchronously
     
