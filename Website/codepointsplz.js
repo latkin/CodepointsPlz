@@ -131,15 +131,11 @@ function Render(codepointData, tableOnly) {
         $("#codepoints").append(table);
     } else if (codepointData.ScreenName) {
         // user profile
-        $("#codepoints").append("<h3>Screen Name</h3>");
-        $("#codepoints").append("<div><p>" + EscapeHtml(codepointData.ScreenName) + "</p></div>");
-        $("#codepoints").append(CodepointTable(codepointData.ScreenNameCodepoints));
-
         $("#codepoints").append("<h3>Display Name</h3>");
         $("#codepoints").append("<div><p>" + EscapeHtml(codepointData.DisplayName) + "</p></div>");
         $("#codepoints").append(CodepointTable(codepointData.DisplayNameCodepoints));
 
-        $("#codepoints").append("<h3>Description</h3>");
+        $("#codepoints").append("<h3>Summary</h3>");
         $("#codepoints").append("<div><p>" + EscapeHtml(codepointData.Summary) + "</p></div>");
         $("#codepoints").append(CodepointTable(codepointData.SummaryCodepoints));
     }
