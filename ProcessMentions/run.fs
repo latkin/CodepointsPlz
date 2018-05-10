@@ -21,6 +21,7 @@ open LinqToTwitter
 open System.IO
 open Microsoft.WindowsAzure.Storage
 open Microsoft.WindowsAzure.Storage.Table
+open System.Web
 
 type Settings =
     { TwitterApiKey : string
@@ -270,12 +271,13 @@ let Run(mention: Mention,
                     where (tweet.Type = StatusType.Oembed && tweet.ID = id && (int tweet.TweetMode) = 1)
                     select tweet.EmbeddedStatus
                 } |> Seq.head
-
-            log.Info(sprintf "Getting codepoints for tweet %d: %O" tweet.StatusID tweet.FullText)
-            let codepoints = Unicode.codepointInfo tweet.FullText
+            
+            let decodedText = HttpUtility.HtmlDecode(tweet.FullText)
+            log.Info(sprintf "Getting codepoints for tweet %d: %O" tweet.StatusID decodedText)
+            let codepoints = Unicode.codepointInfo decodedText
             Some { Mention = mention
                    TargetTweetEmbedHtml = embedInfo.Html
-                   TargetText = tweet.FullText
+                   TargetText = decodedText
                    Codepoints = codepoints
                    TargetUserScreenName = null
                    TargetUserDisplayName = null

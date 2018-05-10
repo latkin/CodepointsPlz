@@ -20,6 +20,7 @@ open Microsoft.WindowsAzure.Storage.Table
 open Newtonsoft.Json
 open LinqToTwitter
 open Microsoft.WindowsAzure.Storage
+open System.Web
 
 type LatestMentionRow() =
    inherit TableEntity()
@@ -144,7 +145,7 @@ let Run(myTimer: TimerInfo,
                 } |> Seq.head
 
             let mention = {
-                Text = if String.IsNullOrEmpty(m.Text) then "<none>" else m.Text
+                Text = if String.IsNullOrEmpty(m.FullText) then "<none>" else HttpUtility.HtmlDecode(m.FullText)
                 CreatedAt = m.CreatedAt
                 Url = sprintf "https://twitter.com/%O/status/%d" m.User.ScreenNameResponse m.StatusID
                 ScreenName = m.User.ScreenNameResponse
