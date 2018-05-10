@@ -21,6 +21,7 @@ open LinqToTwitter
 open System.IO
 open Microsoft.WindowsAzure.Storage
 open Microsoft.WindowsAzure.Storage.Table
+open System.Diagnostics
 
 type Settings =
     { TwitterApiKey : string
@@ -81,8 +82,42 @@ let shorten url settings (log: TraceWriter)=
         log.Error(sprintf "Got error %O from Bitly - %s" response.StatusCode (content.Trim(' ', '\r', '\n')))
         url
 
+let getImage toolsDir url (log: TraceWriter) =
+    log.Info(sprintf "Contents of toolsDir: %A" (Directory.GetFiles(toolsDir)))
+
+    let wkPath = Path.Combine(toolsDir, "wkhtmltoimage.exe")
+    let tmpFile = Path.GetTempFileName() + ".png"
+    let args = sprintf "--window-status print_ready --width 500 %s %s" url tmpFile
+
+    log.Info(sprintf "Starting  %s %s" wkPath args)
+    let psi = ProcessStartInfo(
+                FileName = wkPath,
+                Arguments = args,
+                CreateNoWindow = true,
+                UseShellExecute = false,
+                RedirectStandardError = true,
+                RedirectStandardOutput = true
+                )
+    let proc = Process.Start(psi)
+        
+    if proc.WaitForExit(30 * 1000) then
+        log.Info("Process completed")
+        log.Info(sprintf "Std out: %A" (proc.StandardOutput.ReadToEnd()))
+        log.Info(sprintf "Std err: %A" (proc.StandardError.ReadToEnd()))
+
+        proc.Refresh()
+        if proc.ExitCode = 0 then Some(tmpFile)
+        else None
+    else
+        log.Info("Process hung. Killing...")
+        proc.Kill()
+        log.Info(sprintf "Std out: %A" (proc.StandardOutput.ReadToEnd()))
+        log.Info(sprintf "Std err: %A" (proc.StandardError.ReadToEnd()))
+        None
+
 let Run(mention: Mention,
-        log: TraceWriter) =
+        log: TraceWriter,
+        functionContext : ExecutionContext) =
     log.Info(sprintf "Replying to mention %O" mention.Url)
 
     let settings = Settings.load()
@@ -98,6 +133,9 @@ let Run(mention: Mention,
 
     let fullUrl = sprintf "https://latkin.github.io/CodepointsPlz/Website/?tid=%d" mention.StatusID
     let shortUrl = shorten fullUrl settings log
+
+    let imagePath = getImage (Path.Combine(functionContext.FunctionDirectory, "wkhtmltoimage")) (sprintf "%s&to" fullUrl) log
+    log.Info(sprintf "Screenshot path: %A" imagePath)
 
     let status = 
         context.ReplyAsync(mention.StatusID, sprintf "@%s ➡️ %s ⬅️" mention.ScreenName shortUrl)
