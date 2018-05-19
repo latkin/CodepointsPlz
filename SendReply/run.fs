@@ -23,6 +23,7 @@ open Microsoft.WindowsAzure.Storage
 open Microsoft.WindowsAzure.Storage.Table
 open System.Security.Cryptography
 open System.Text
+open System
 
 type Settings =
     { TwitterApiKey : string
@@ -127,9 +128,9 @@ let Run(mention: Mention,
             context.UploadMediaAsync(imageBytes, "image/png", "tweet_image")
             |> Async.AwaitTask
             |> Async.RunSynchronously
-
+    
     let status = 
-        context.ReplyAsync(mention.StatusID, sprintf "@%s ➡️ %s ⬅️" mention.ScreenName shortUrl, [|media.MediaID|])
+        context.ReplyAsync(mention.StatusID, (sprintf "➡️ %s ⬅️" shortUrl), autoPopulateReplyMetadata = true, mediaIds = [|media.MediaID|])
         |> Async.AwaitTask
         |> Async.RunSynchronously
     
