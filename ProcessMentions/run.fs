@@ -65,48 +65,34 @@ type CodepointRequest =
     | User of id : uint64
     | Blank
 
+module Option =
+    let defaultValue x xOpt = match xOpt with Some(y) -> y | None -> x
+
 module CodepointRequest =
-    let private replyRegex = "this one|this|👆|☝️"
     let private trim (s:String) = s.Trim(' ','\r', '\n')
-    let private textAfterMention text screenName =
-        let afterMentionPattern = sprintf """@%s[ \r\n]*(.+?)$""" screenName
-        let m = Regex.Match(text, afterMentionPattern, RegexOptions.Singleline ||| RegexOptions.IgnoreCase)
-        if m.Success then
-            m.Groups.[1].Value |> trim
-        else
-            ""
+    let private hasUpArrow s = Regex.IsMatch(s, "\\u2B06")
+    let private hasDownArrow s = Regex.IsMatch(s, "\\u2B07")
+    let private hasRightArrow s = Regex.IsMatch(s, "\\u27A1")
+    let private afterRightArrow s =
+        match Regex.Match(s, "\\u27A1(?:\\uFE0F)?(.*)", RegexOptions.Singleline) with
+        | m when not m.Success -> None
+        | m -> m.Groups.[1].Value |> trim |> Some
        
     let analyze (mention : Mention) =
-        match mention.UserMentions |> Array.tryLast with
-        // no mentions -- should not be possible since we only run
-        // this against tweets where we are mentioned
-        | None -> Blank
-        | Some(um) ->
-
-            match textAfterMention mention.Text "codepointsplz" with
-            // our mention is at the very end, ignore
-            | "" -> Blank
-            | afterMention ->
-                // our mention is not at the end, and there is a quoted tweet.
-                // assume this is the target
-                if mention.QuotedTweet <> 0uL then
-                    Tweet(mention.QuotedTweet)
-                else
-                    // we are mentioned in reply to a tweet, with text "this one"
-                    // assume the replied-to tweet is the target
-                    if mention.InReplyToTweet <> 0uL && Regex.IsMatch(afterMention.ToLower(), replyRegex, RegexOptions.Singleline ||| RegexOptions.IgnoreCase) then
-                        Tweet(mention.InReplyToTweet)
-                    // the only content after our mention is a mention of another user
-                    // assume this is a request to analyze their profile
-                    elif afterMention.ToLower() = ("@" + um.ScreenName.ToLower()) then
-                        User(um.UserID)
-                    // we are not the last account mentioned, and this is a reply
-                    // assume we are not intended to respond
-                    elif um.UserID <> 971963654047330308uL && mention.InReplyToTweet <> 0uL then
-                        Blank
-                    // otherwise, assume the text of the tweet after our mention is the target
-                    else
-                        PlainText(afterMention)
+        if mention.InReplyToTweet <> 0uL && hasUpArrow mention.Text then
+            Tweet(mention.InReplyToTweet)
+        elif mention.QuotedTweet <> 0uL && hasDownArrow mention.Text then
+            Tweet(mention.QuotedTweet)
+        elif hasRightArrow mention.Text then
+            match afterRightArrow mention.Text with
+            | None | Some("") -> Blank
+            | Some(s) ->
+                mention.UserMentions
+                |> Array.tryFind (fun um -> (sprintf "@%s" um.ScreenName).ToLower() = s.ToLower())
+                |> Option.map (fun um -> User(um.UserID))
+                |> Option.defaultValue (PlainText(s))
+        else
+            Blank
 
 [<CLIMutable>]
  type CodepointInfo =
