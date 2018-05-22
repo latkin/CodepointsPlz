@@ -1,0 +1,30 @@
+{
+  "bindings": [
+    {
+      "name": "myTimer",
+      "type": "timerTrigger",
+      "direction": "in",
+      "schedule": "*/10 * * * * *"
+    },
+    {
+      "type": "queue",
+      "name": "mentionQueue",
+      "queueName": "mentions",
+      "connection": "codepointsplz_STORAGE",
+      "direction": "out"
+    },
+    {
+      "type": "table",
+      "name": "inLatestMentionRow",
+      "tableName": "requestdata",
+      "partitionKey": "latest-mention",
+      "rowKey": "latest-mention",
+      "take": 1,
+      "connection": "codepointsplz_STORAGE",
+      "direction": "in"
+    }
+  ],
+  "scriptFile": "bin/Debug/net461/publish/bin/PollMentions.dll",
+  "entryPoint": "PollMentions.Run",
+  "disabled": false
+}
