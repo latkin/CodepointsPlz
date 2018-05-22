@@ -1,15 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFramework>net461</TargetFramework>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <DefineConstants>TRACE;RELEASE;NETSTANDARD2_0;VS</DefineConstants>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <DefineConstants>TRACE;DEBUG;NETSTANDARD2_0;VS</DefineConstants>
+  <PropertyGroup>
+    <UnicodeVersion>11.0.0</UnicodeVersion>
+    <DataFileName>UnicodeData-11.0.0d14.txt</DataFileName>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,10 +14,21 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="linqtotwitter" Version="4.2.1" />
-    <PackageReference Include="Microsoft.Azure.WebJobs" Version="2.1.0" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" Version="2.1.0" />
-    <PackageReference Include="WindowsAzure.Storage" Version="9.1.0" />
+    <None Include="function.json" />
+    <None Include="UnicodeData.txt" />
   </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="LinqToTwitter" Version="4.2.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
+    <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="1.0.12" />
+    <Reference Include="System.Web" />
+  </ItemGroup>
+
+  <Target Name="UnicodeDownload" AfterTargets="Build">
+    <Message Condition="Exists('./UnicodeData.txt')" Importance="High" Text="UnicodeData.txt exists, skipping download" />
+    <Message Condition="!Exists('./UnicodeData.txt')" Importance="High" Text="Downloading data file $(DataFileName) for Unicode version $(UnicodeVersion)" />
+    <Exec Condition="!Exists('./UnicodeData.txt')" Command='powershell.exe -ExecutionPolicy bypass -noprofile -Command "Invoke-WebRequest https://www.unicode.org/Public/$(UnicodeVersion)/ucd/$(DataFileName) -OutFile ./UnicodeData.txt"' />
+  </Target>
 
 </Project>

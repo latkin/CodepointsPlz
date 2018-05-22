@@ -1,0 +1,28 @@
+{
+    "bindings": [
+        {
+            "name": "mention",
+            "type": "queueTrigger",
+            "direction": "in",
+            "queueName": "mentions",
+            "connection": "codepointsplz_STORAGE"
+        },
+        {
+            "type": "queue",
+            "name": "replyQueue",
+            "queueName": "replies",
+            "connection": "codepointsplz_STORAGE",
+            "direction": "out"
+        },
+        {
+            "type": "table",
+            "name": "requestDataTable",
+            "tableName": "requestdata",
+            "connection": "codepointsplz_STORAGE",
+            "direction": "out"
+        }
+    ],
+    "scriptFile": "bin/Debug/net461/publish/bin/ProcessMentions.dll",
+    "entryPoint": "ProcessMentions.Run",
+    "disabled": false
+}
