@@ -1,0 +1,14 @@
+{
+    "bindings": [
+      {
+        "name": "mention",
+        "type": "queueTrigger",
+        "direction": "in",
+        "queueName": "replies",
+        "connection": "codepointsplz_STORAGE"
+      }
+    ],
+    "scriptFile": "bin/Debug/net461/publish/bin/SendReply.dll",
+    "entryPoint": "SendReply.Run",
+    "disabled": false
+  }

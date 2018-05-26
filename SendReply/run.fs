@@ -1,29 +1,11 @@
-#if VS
-module run
-#else
-#r "System.Net.Http"
-#r "Newtonsoft.Json"
-#r "Microsoft.WindowsAzure.Storage"
-#r "System.Web"
-#r "System.Linq.Expressions"
-#r "System.Collections"
-#endif
+module SendReply
 
 open System
-open System.Collections.Generic
-open System.Net
 open System.Net.Http
-open Microsoft.Azure.WebJobs.Host
-open Microsoft.Azure.WebJobs
-open Newtonsoft.Json
-open System.Text.RegularExpressions
-open LinqToTwitter
-open System.IO
-open Microsoft.WindowsAzure.Storage
-open Microsoft.WindowsAzure.Storage.Table
 open System.Security.Cryptography
 open System.Text
-open System
+open Microsoft.Azure.WebJobs.Host
+open LinqToTwitter
 
 type Settings =
     { TwitterApiKey : string
@@ -36,19 +18,19 @@ type Settings =
 
     static member load () = 
         { TwitterApiKey =
-            Environment.GetEnvironmentVariable("APPSETTING_twitterapikey", EnvironmentVariableTarget.Process)
+            Environment.GetEnvironmentVariable("twitterapikey", EnvironmentVariableTarget.Process)
           TwitterApiSecret =
-            Environment.GetEnvironmentVariable("APPSETTING_twitterapisecret", EnvironmentVariableTarget.Process)
+            Environment.GetEnvironmentVariable("twitterapisecret", EnvironmentVariableTarget.Process)
           TwitterAccessToken =
-            Environment.GetEnvironmentVariable("APPSETTING_twitteraccesstoken", EnvironmentVariableTarget.Process)
+            Environment.GetEnvironmentVariable("twitteraccesstoken", EnvironmentVariableTarget.Process)
           TwitterAccessTokenSecret =
-            Environment.GetEnvironmentVariable("APPSETTING_twitteraccesstokensecret", EnvironmentVariableTarget.Process)
+            Environment.GetEnvironmentVariable("twitteraccesstokensecret", EnvironmentVariableTarget.Process)
           BitlyAccessToken =
-            Environment.GetEnvironmentVariable("APPSETTING_bitlyaccesstoken", EnvironmentVariableTarget.Process)
+            Environment.GetEnvironmentVariable("bitlyaccesstoken", EnvironmentVariableTarget.Process)
           ScreenshotApiKey = 
-            Environment.GetEnvironmentVariable("APPSETTING_screenshotapikey", EnvironmentVariableTarget.Process)
+            Environment.GetEnvironmentVariable("screenshotapikey", EnvironmentVariableTarget.Process)
           ScreenshotApiSecret = 
-            Environment.GetEnvironmentVariable("APPSETTING_screenshotapisecret", EnvironmentVariableTarget.Process)
+            Environment.GetEnvironmentVariable("screenshotapisecret", EnvironmentVariableTarget.Process)
         }
 
 [<CLIMutable>]
