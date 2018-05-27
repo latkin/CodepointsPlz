@@ -1,11 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <DefineConstants>TRACE;DEBUG;NETSTANDARD2_0;VS</DefineConstants>
+    <TargetFramework>net461</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,10 +9,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Azure.WebJobs" Version="2.1.0" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions" Version="2.1.0" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="1.0.0" />
-    <PackageReference Include="WindowsAzure.Storage" Version="9.1.0" />
+    <None Include="function.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
+    <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="1.0.12" />
+    <Reference Include="System.Web" />
   </ItemGroup>
 
 </Project>

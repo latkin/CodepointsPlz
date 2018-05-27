@@ -1,22 +1,13 @@
-#if VS
-module run
-#else
-#r "System.Net.Http"
-#r "Newtonsoft.Json"
-#r "Microsoft.WindowsAzure.Storage"
-#r "System.Web"
-#r "System.Linq.Expressions"
-#r "System.Collections"
-#endif
+module WebBackend
 
 open System
+open System.Linq
 open System.Net
 open System.Net.Http
 open System.Text.RegularExpressions
 open Microsoft.Azure.WebJobs.Host
-open Newtonsoft.Json
 open Microsoft.WindowsAzure.Storage.Table
-open System.Linq
+open Newtonsoft.Json
 
 type RequestDataRow() =
    inherit TableEntity()
@@ -58,7 +49,7 @@ let Run(req: HttpRequestMessage,
     async {
         let idParam =
             req.GetQueryNameValuePairs()
-            |> Seq.tryFind (fun q -> q.Key = "tid" && Regex.IsMatch(q.Value, "^\d{2,100}"))
+            |> Seq.tryFind (fun q -> q.Key = "tid" && Regex.IsMatch(q.Value, "^\\d{2,100}"))
 
         match idParam with
         | Some idParam ->
