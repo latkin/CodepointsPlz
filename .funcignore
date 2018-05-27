@@ -1,0 +1,12 @@
+**/obj
+*.sln
+**/*.fsproj
+**/*.fs
+*.md
+.vs
+.vscode
+.git
+LICENSE
+Website
+**/net461/bin
+**/bin/net461
