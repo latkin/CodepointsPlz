@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>net461</TargetFramework>
-
     <IsPackable>false</IsPackable>
+    <NoWarn>NU1608</NoWarn>
   </PropertyGroup>
 
   <PropertyGroup>

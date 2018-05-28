@@ -6,38 +6,8 @@ open System.Text.RegularExpressions
 open System.Web
 open Microsoft.Azure.WebJobs
 open Microsoft.Azure.WebJobs.Host
-open Microsoft.WindowsAzure.Storage.Table
-open LinqToTwitter
-open Newtonsoft.Json
 open CodepointsPlz.Shared
-
-[<CLIMutable>]
-type UserMention =
-    { UserID : uint64
-      ScreenName : string
-      Start : int
-      End : int }
-
-[<CLIMutable>]
-type Mention =
-    { Text : string
-      UserMentions : UserMention array
-      QuotedTweet : uint64
-      InReplyToTweet : uint64
-      EmbedHtml : string
-      Url : string
-      ScreenName : string
-      CreatedAt : DateTime
-      StatusID : uint64 }
-
-type CodepointRequest =
-    | PlainText of text : string
-    | Tweet of id : uint64
-    | User of id : uint64
-    | Blank
-
-module Option =
-    let defaultValue x xOpt = match xOpt with Some(y) -> y | None -> x
+open CodepointsPlz.Shared.Storage
 
 module CodepointRequest =
     let private trim (s:String) = s.Trim(' ','\r', '\n')
@@ -65,45 +35,12 @@ module CodepointRequest =
         else
             Blank
 
-[<CLIMutable>]
-type Reply =
-    { Mention : Mention
-
-      TargetTweetEmbedHtml : string
-
-      TargetText : string
-      Codepoints : Codepoint[]
-
-      TargetUserScreenName : string
-      TargetUserDisplayName : string
-      TargetUserSummary : string
-      UserScreenNameCodepoints : Codepoint[]
-      UserDisplayNameCodepoints : Codepoint[]
-      UserSummaryCodepoints : Codepoint[] }
-
-type RequestDataRow() =
-   inherit TableEntity()
-   member val CodepointJson = null with get,set
-   member val TargetScreenNameCodepointJson = null with get,set
-   member val TargetDisplayNameCodepointJson = null with get,set
-   member val TargetSummaryCodepointJson = null with get,set
-   member val MentionText = null with get,set
-   member val TargetText = null with get,set
-   member val MentionUrl = null with get,set
-   member val MentionStatusID = 0uL with get,set
-   member val CreatedAt = DateTimeOffset.UtcNow with get,set
-   member val MentionEmbedHtml = null with get,set
-   member val TargetEmbedHtml = null with get,set
-   member val TargetScreenName = null with get,set
-   member val TargetDisplayName = null with get,set
-   member val TargetSummary = null with get,set
-
 let Run(mention: Mention,
         replyQueue: ICollector<Mention>,
         requestDataTable: ICollector<RequestDataRow>,
         log: TraceWriter,
         functionContext : ExecutionContext) =
-    try
+
     log.Info(sprintf "Processing mention %O" mention.Url)
     log.Info(sprintf "Text: %O" mention.Text)
 
@@ -113,21 +50,14 @@ let Run(mention: Mention,
     log.Info(sprintf "Request parsed as %A" cpRequest)
 
     let settings = Settings.load ()
-    let context =
-        let credentials = SingleUserInMemoryCredentialStore()
-        credentials.ConsumerKey <- settings.TwitterApiKey
-        credentials.ConsumerSecret <- settings.TwitterApiSecret
-        credentials.AccessToken <- settings.TwitterAccessToken
-        credentials.AccessTokenSecret <- settings.TwitterAccessTokenSecret
-        let authorizer = SingleUserAuthorizer()
-        authorizer.CredentialStore <- credentials
-        new TwitterContext(authorizer)
+    let twitter = Twitter(settings)
 
     let reply = 
         match cpRequest with
         | Blank -> None
         | PlainText(s) ->
             let codepoints = unicode.GetCodepoints(s)
+
             Some { Mention = mention
                    TargetTweetEmbedHtml = null
                    TargetText = s
@@ -138,28 +68,14 @@ let Run(mention: Mention,
                    UserScreenNameCodepoints = null 
                    UserDisplayNameCodepoints = null
                    UserSummaryCodepoints = null }
-
         | Tweet(id) ->
-            let tweet =
-                let idList = sprintf "%d" id
-                query {
-                    for tweet in context.Status do
-                    where (tweet.Type = StatusType.Lookup && tweet.TweetIDs = idList && (int tweet.TweetMode) = 1)
-                    select tweet
-                } |> Seq.head
-
-            let embedInfo =
-                query {
-                    for tweet in context.Status do
-                    where (tweet.Type = StatusType.Oembed && tweet.ID = id && (int tweet.TweetMode) = 1)
-                    select tweet.EmbeddedStatus
-                } |> Seq.head
-            
+            let tweet = twitter.GetTweet(id)
+            let embedHtml = twitter.GetEmbedHtml(tweet)
             let decodedText = HttpUtility.HtmlDecode(tweet.FullText)
-            log.Info(sprintf "Getting codepoints for tweet %d: %O" tweet.StatusID decodedText)
             let codepoints = unicode.GetCodepoints(decodedText)
+
             Some { Mention = mention
-                   TargetTweetEmbedHtml = embedInfo.Html
+                   TargetTweetEmbedHtml = embedHtml
                    TargetText = decodedText
                    Codepoints = codepoints
                    TargetUserScreenName = null
@@ -168,16 +84,12 @@ let Run(mention: Mention,
                    UserScreenNameCodepoints = null 
                    UserDisplayNameCodepoints = null
                    UserSummaryCodepoints = null }
-
         | User(id) ->
-            let user =
-                let idList = sprintf "%d" id
-                query {
-                    for u in context.User do
-                    where (u.Type = UserType.Lookup && u.UserIdList = idList)
-                    select u
-                } |> Seq.head
-            log.Info(sprintf "Getting codepoints for user %O: %O %O" user.ScreenNameResponse user.Name user.Description)
+            let user = twitter.GetUser(id)
+            let screenNameCodepoints = unicode.GetCodepoints(user.ScreenNameResponse)
+            let displayNameCodepoints = unicode.GetCodepoints(user.Name)
+            let summaryCodepoints = unicode.GetCodepoints(user.Description)
+
             Some { Mention = mention
                    TargetTweetEmbedHtml = null
                    TargetText = null
@@ -185,31 +97,12 @@ let Run(mention: Mention,
                    TargetUserScreenName = user.ScreenNameResponse
                    TargetUserDisplayName = user.Name
                    TargetUserSummary = user.Description
-                   UserScreenNameCodepoints = unicode.GetCodepoints(user.ScreenNameResponse)
-                   UserDisplayNameCodepoints = unicode.GetCodepoints(user.Name)
-                   UserSummaryCodepoints = unicode.GetCodepoints(user.Description) }
+                   UserScreenNameCodepoints = screenNameCodepoints
+                   UserDisplayNameCodepoints = displayNameCodepoints
+                   UserSummaryCodepoints = summaryCodepoints }
 
     match reply with
     | None -> ()
     | Some(r) ->
-        let dataRow = RequestDataRow(PartitionKey = (r.Mention.StatusID % 100uL).ToString(),
-                                     RowKey = r.Mention.StatusID.ToString(),
-                                     CodepointJson = JsonConvert.SerializeObject(r.Codepoints),
-                                     TargetText = r.TargetText,
-                                     TargetScreenNameCodepointJson = JsonConvert.SerializeObject(r.UserScreenNameCodepoints),
-                                     TargetDisplayNameCodepointJson = JsonConvert.SerializeObject(r.UserDisplayNameCodepoints),
-                                     TargetSummaryCodepointJson = JsonConvert.SerializeObject(r.UserSummaryCodepoints),
-                                     TargetEmbedHtml = r.TargetTweetEmbedHtml,
-                                     TargetScreenName = r.TargetUserScreenName,
-                                     TargetDisplayName = r.TargetUserDisplayName,
-                                     TargetSummary = r.TargetUserSummary,
-                                     CreatedAt = DateTimeOffset(r.Mention.CreatedAt),
-                                     MentionEmbedHtml = r.Mention.EmbedHtml,
-                                     MentionStatusID = r.Mention.StatusID,
-                                     MentionText = r.Mention.Text,
-                                     MentionUrl = r.Mention.Url)
-        requestDataTable.Add(dataRow)
+        requestDataTable.Add(RequestDataRow.fromReply r)
         replyQueue.Add(mention)
-
-    with
-    | e -> log.Error(e.ToString())

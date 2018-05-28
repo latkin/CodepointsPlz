@@ -7,25 +7,6 @@ open Microsoft.Azure.WebJobs.Host
 open CodepointsPlz.Shared
 open CodepointsPlz.Shared.Storage
 
-[<CLIMutable>]
-type UserMention =
-    { UserID : uint64
-      ScreenName : string
-      Start : int
-      End : int }
-
-[<CLIMutable>]
-type Mention =
-    { Text : string
-      UserMentions : UserMention array
-      QuotedTweet : uint64
-      InReplyToTweet : uint64
-      EmbedHtml : string
-      Url : string
-      ScreenName : string
-      CreatedAt : DateTime
-      StatusID : uint64 }
-
 let Run(myTimer: TimerInfo, 
         mentionQueue: ICollector<Mention>,
         inLatestMentionRow : LatestMentionRow,

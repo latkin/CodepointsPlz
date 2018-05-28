@@ -13,6 +13,23 @@ type Twitter(settings) =
         new TwitterContext(authorizer)
     )
     
+    member __.GetTweet(id : uint64) =
+        let idList = sprintf "%d" id
+        query {
+            for tweet in context.Value.Status do
+            where (tweet.Type = StatusType.Lookup && tweet.TweetIDs = idList && (int tweet.TweetMode) = 1)
+            select tweet
+        } |> Seq.head
+
+
+    member __.GetUser(id : uint64) =
+        let idList = sprintf "%d" id
+        query {
+            for u in context.Value.User do
+            where (u.Type = UserType.Lookup && u.UserIdList = idList)
+            select u
+        } |> Seq.head
+
     member __.MentionsSince(latestMention) =
         match latestMention with
         | 0uL ->
