@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net461</TargetFramework>
+
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <UnicodeVersion>11.0.0</UnicodeVersion>
+    <DataFileName>UnicodeData-11.0.0d14.txt</DataFileName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="nunit" Version="3.10.1" />
+    <PackageReference Include="NUnit3TestAdapter" Version="3.10.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.6.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="function.json" />
+    <None Include="UnicodeData.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="UnicodeTests.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Shared\Shared.fsproj" />
+  </ItemGroup>
+
+  <Target Name="UnicodeDownload" AfterTargets="Build">
+    <Message Condition="Exists('./UnicodeData.txt')" Importance="High" Text="UnicodeData.txt exists, skipping download" />
+    <Message Condition="!Exists('./UnicodeData.txt')" Importance="High" Text="Downloading data file $(DataFileName) for Unicode version $(UnicodeVersion)" />
+    <Exec Condition="!Exists('./UnicodeData.txt')" Command="powershell.exe -ExecutionPolicy bypass -noprofile -Command &quot;Invoke-WebRequest https://www.unicode.org/Public/$(UnicodeVersion)/ucd/$(DataFileName) -OutFile ./UnicodeData.txt&quot;" />
+  </Target>
+
+</Project>
