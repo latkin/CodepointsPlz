@@ -11,23 +11,6 @@ open LinqToTwitter
 open Newtonsoft.Json
 open CodepointsPlz.Shared
 
-type Settings =
-    { TwitterApiKey : string
-      TwitterApiSecret : string
-      TwitterAccessToken : string
-      TwitterAccessTokenSecret : string} with
-
-    static member load () = 
-        { TwitterApiKey =
-            Environment.GetEnvironmentVariable("twitterapikey", EnvironmentVariableTarget.Process)
-          TwitterApiSecret =
-            Environment.GetEnvironmentVariable("twitterapisecret", EnvironmentVariableTarget.Process)
-          TwitterAccessToken =
-            Environment.GetEnvironmentVariable("twitteraccesstoken", EnvironmentVariableTarget.Process)
-          TwitterAccessTokenSecret =
-            Environment.GetEnvironmentVariable("twitteraccesstokensecret", EnvironmentVariableTarget.Process)
-        }
-
 [<CLIMutable>]
 type UserMention =
     { UserID : uint64
@@ -129,7 +112,7 @@ let Run(mention: Mention,
     let cpRequest = CodepointRequest.analyze mention
     log.Info(sprintf "Request parsed as %A" cpRequest)
 
-    let settings = Settings.load()
+    let settings = Settings.load ()
     let context =
         let credentials = SingleUserInMemoryCredentialStore()
         credentials.ConsumerKey <- settings.TwitterApiKey

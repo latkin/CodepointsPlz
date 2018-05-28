@@ -6,32 +6,7 @@ open System.Security.Cryptography
 open System.Text
 open Microsoft.Azure.WebJobs.Host
 open LinqToTwitter
-
-type Settings =
-    { TwitterApiKey : string
-      TwitterApiSecret : string
-      TwitterAccessToken : string
-      TwitterAccessTokenSecret : string
-      BitlyAccessToken : string
-      ScreenshotApiKey : string
-      ScreenshotApiSecret : string } with
-
-    static member load () = 
-        { TwitterApiKey =
-            Environment.GetEnvironmentVariable("twitterapikey", EnvironmentVariableTarget.Process)
-          TwitterApiSecret =
-            Environment.GetEnvironmentVariable("twitterapisecret", EnvironmentVariableTarget.Process)
-          TwitterAccessToken =
-            Environment.GetEnvironmentVariable("twitteraccesstoken", EnvironmentVariableTarget.Process)
-          TwitterAccessTokenSecret =
-            Environment.GetEnvironmentVariable("twitteraccesstokensecret", EnvironmentVariableTarget.Process)
-          BitlyAccessToken =
-            Environment.GetEnvironmentVariable("bitlyaccesstoken", EnvironmentVariableTarget.Process)
-          ScreenshotApiKey = 
-            Environment.GetEnvironmentVariable("screenshotapikey", EnvironmentVariableTarget.Process)
-          ScreenshotApiSecret = 
-            Environment.GetEnvironmentVariable("screenshotapisecret", EnvironmentVariableTarget.Process)
-        }
+open CodepointsPlz.Shared
 
 [<CLIMutable>]
 type UserMention =
@@ -90,7 +65,7 @@ let Run(mention: Mention,
         log: TraceWriter) =
     log.Info(sprintf "Replying to mention %O" mention.Url)
 
-    let settings = Settings.load()
+    let settings = Settings.load ()
     let context =
         let credentials = SingleUserInMemoryCredentialStore()
         credentials.ConsumerKey <- settings.TwitterApiKey

@@ -7,6 +7,7 @@ open Microsoft.Azure.WebJobs.Host
 open Microsoft.WindowsAzure.Storage
 open Microsoft.WindowsAzure.Storage.Table
 open LinqToTwitter
+open CodepointsPlz.Shared
 
 type LatestMentionRow() =
    inherit TableEntity()
@@ -30,29 +31,6 @@ type Mention =
       ScreenName : string
       CreatedAt : DateTime
       StatusID : uint64 }
-
-type Settings =
-    { TwitterApiKey : string
-      TwitterApiSecret : string
-      TwitterAccessToken : string
-      TwitterAccessTokenSecret : string
-      StorageConnectionString : string 
-      StorageTableName : string } with
-
-    static member load () = 
-        { TwitterApiKey =
-            Environment.GetEnvironmentVariable("twitterapikey", EnvironmentVariableTarget.Process)
-          TwitterApiSecret =
-            Environment.GetEnvironmentVariable("twitterapisecret", EnvironmentVariableTarget.Process)
-          TwitterAccessToken =
-            Environment.GetEnvironmentVariable("twitteraccesstoken", EnvironmentVariableTarget.Process)
-          TwitterAccessTokenSecret =
-            Environment.GetEnvironmentVariable("twitteraccesstokensecret", EnvironmentVariableTarget.Process)
-          StorageConnectionString =
-            Environment.GetEnvironmentVariable("codepointsplz_STORAGE", EnvironmentVariableTarget.Process)
-          StorageTableName =
-            Environment.GetEnvironmentVariable("storagetablename", EnvironmentVariableTarget.Process)
-        }
 
 let saveLatestMention id settings =
     let table =
@@ -78,7 +56,7 @@ let Run(myTimer: TimerInfo,
     try
     log.Info(sprintf "Polling mentions after %O" inLatestMentionRow.LatestMention)
 
-    let settings = Settings.load()
+    let settings = Settings.load ()
     let context =
         let credentials = SingleUserInMemoryCredentialStore()
         credentials.ConsumerKey <- settings.TwitterApiKey
