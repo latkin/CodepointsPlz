@@ -1,16 +1,15 @@
 module ProcessMentions
 
 open System
-open System.Collections.Generic
 open System.IO
 open System.Text.RegularExpressions
 open System.Web
 open Microsoft.Azure.WebJobs
 open Microsoft.Azure.WebJobs.Host
-open Microsoft.WindowsAzure.Storage
 open Microsoft.WindowsAzure.Storage.Table
 open LinqToTwitter
 open Newtonsoft.Json
+open CodepointsPlz.Shared
 
 type Settings =
     { TwitterApiKey : string
@@ -84,25 +83,20 @@ module CodepointRequest =
             Blank
 
 [<CLIMutable>]
- type CodepointInfo =
-    { Codepoint : int
-      Name : string }
-
-[<CLIMutable>]
 type Reply =
     { Mention : Mention
 
       TargetTweetEmbedHtml : string
 
       TargetText : string
-      Codepoints : CodepointInfo array
+      Codepoints : Codepoint[]
 
       TargetUserScreenName : string
       TargetUserDisplayName : string
       TargetUserSummary : string
-      UserScreenNameCodepoints : CodepointInfo array
-      UserDisplayNameCodepoints : CodepointInfo array
-      UserSummaryCodepoints : CodepointInfo array }
+      UserScreenNameCodepoints : Codepoint[]
+      UserDisplayNameCodepoints : Codepoint[]
+      UserSummaryCodepoints : Codepoint[] }
 
 type RequestDataRow() =
    inherit TableEntity()
@@ -121,75 +115,6 @@ type RequestDataRow() =
    member val TargetDisplayName = null with get,set
    member val TargetSummary = null with get,set
 
- module Unicode =
-    let mutable private store : Dictionary<int, string> = null
-    let mutable private ranges : List<(int * int)> = null
-    let private parsePatt = """^\<(?<rangeName>[a-zA-Z0-9 ]+?), (?<marker>First|Last)>$"""
-
-    let load rootPath =
-        let dataFilePath = Path.Combine(rootPath, "UnicodeData.txt")
-        if not (File.Exists(dataFilePath)) then failwithf "Unicode data file does not exist at expected path %O" dataFilePath
-
-        store <- Dictionary<int, string>()
-        ranges <- List<(int * int)>()
-
-        let lines = File.ReadLines(dataFilePath)
-        let mutable rangeStart = 0
-
-        for line in lines do
-            if not (String.IsNullOrEmpty(line)) then
-                let fields = line.Split(';')
-                let codepoint = Convert.ToInt32(fields.[0], 16)
-                match Regex.Match(fields.[1], parsePatt) with
-                | m when m.Success ->
-                    match m.Groups.["marker"].Value with
-                    | "First" ->
-                        rangeStart <- codepoint
-                    | "Last" ->
-                        let rangeName = m.Groups.["rangeName"].Value
-                        store.Add(rangeStart, rangeName)
-                        ranges.Add((rangeStart, codepoint))
-                | _ ->
-                    let name = fields.[1]
-                    let altName = fields.[10]
-                    if name.StartsWith("<") && name.EndsWith(">") && not (String.IsNullOrEmpty(altName)) then
-                        store.Add(codepoint, sprintf "%O %O" name altName)
-                    else
-                        store.Add(codepoint, name)
-
-    let private lookup c =
-        if c < 0 || c > 0x10ffff then "INVALID CODEPOINT" else
-        match store.TryGetValue(c) with
-        | true, n -> n
-        | _ ->
-            let (rangeStart, _) = ranges |> Seq.find (fun (a, b) -> c >= a && c <= b)
-            let n = store.[rangeStart]
-            store.[c] <- n
-            n
-
-    let codepointInfo (s : string) =
-        let mutable i = 0
-        let info = List<CodepointInfo>()
-        while i < s.Length do
-            let codepoint =
-                // BMP or paired surrogate
-                try Char.ConvertToUtf32(s, i) with
-                // unpaired surrogate
-                | _ -> int s.[i]
-
-            info.Add({ Codepoint = codepoint
-                       Name = lookup codepoint })
-
-            let isPairedHS =
-                Char.IsHighSurrogate(s.[i]) && i < (s.Length - 1) && Char.IsLowSurrogate(s.[i+1])
-
-            if isPairedHS then
-                i <- i + 2
-            else
-                i <- i + 1
-
-        info.ToArray()
-
 let Run(mention: Mention,
         replyQueue: ICollector<Mention>,
         requestDataTable: ICollector<RequestDataRow>,
@@ -199,7 +124,7 @@ let Run(mention: Mention,
     log.Info(sprintf "Processing mention %O" mention.Url)
     log.Info(sprintf "Text: %O" mention.Text)
 
-    Unicode.load functionContext.FunctionDirectory
+    let unicode = UnicodeLookup(Path.Combine(functionContext.FunctionDirectory, "UnicodeData.txt"))
 
     let cpRequest = CodepointRequest.analyze mention
     log.Info(sprintf "Request parsed as %A" cpRequest)
@@ -219,7 +144,7 @@ let Run(mention: Mention,
         match cpRequest with
         | Blank -> None
         | PlainText(s) ->
-            let codepoints = Unicode.codepointInfo s
+            let codepoints = unicode.GetCodepoints(s)
             Some { Mention = mention
                    TargetTweetEmbedHtml = null
                    TargetText = s
@@ -249,7 +174,7 @@ let Run(mention: Mention,
             
             let decodedText = HttpUtility.HtmlDecode(tweet.FullText)
             log.Info(sprintf "Getting codepoints for tweet %d: %O" tweet.StatusID decodedText)
-            let codepoints = Unicode.codepointInfo decodedText
+            let codepoints = unicode.GetCodepoints(decodedText)
             Some { Mention = mention
                    TargetTweetEmbedHtml = embedInfo.Html
                    TargetText = decodedText
@@ -277,9 +202,9 @@ let Run(mention: Mention,
                    TargetUserScreenName = user.ScreenNameResponse
                    TargetUserDisplayName = user.Name
                    TargetUserSummary = user.Description
-                   UserScreenNameCodepoints = Unicode.codepointInfo user.ScreenNameResponse
-                   UserDisplayNameCodepoints = Unicode.codepointInfo user.Name
-                   UserSummaryCodepoints = Unicode.codepointInfo user.Description }
+                   UserScreenNameCodepoints = unicode.GetCodepoints(user.ScreenNameResponse)
+                   UserDisplayNameCodepoints = unicode.GetCodepoints(user.Name)
+                   UserSummaryCodepoints = unicode.GetCodepoints(user.Description) }
 
     match reply with
     | None -> ()

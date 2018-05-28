@@ -22,13 +22,14 @@
     <PackageReference Include="LinqToTwitter" Version="4.2.1" />
     <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
     <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="1.0.12" />
+    <ProjectReference Include="../Shared/Shared.fsproj" />
     <Reference Include="System.Web" />
   </ItemGroup>
 
   <Target Name="UnicodeDownload" AfterTargets="Build">
     <Message Condition="Exists('./UnicodeData.txt')" Importance="High" Text="UnicodeData.txt exists, skipping download" />
     <Message Condition="!Exists('./UnicodeData.txt')" Importance="High" Text="Downloading data file $(DataFileName) for Unicode version $(UnicodeVersion)" />
-    <Exec Condition="!Exists('./UnicodeData.txt')" Command='powershell.exe -ExecutionPolicy bypass -noprofile -Command "Invoke-WebRequest https://www.unicode.org/Public/$(UnicodeVersion)/ucd/$(DataFileName) -OutFile ./UnicodeData.txt"' />
+    <Exec Condition="!Exists('./UnicodeData.txt')" Command="powershell.exe -ExecutionPolicy bypass -noprofile -Command &quot;Invoke-WebRequest https://www.unicode.org/Public/$(UnicodeVersion)/ucd/$(DataFileName) -OutFile ./UnicodeData.txt&quot;" />
   </Target>
 
 </Project>
