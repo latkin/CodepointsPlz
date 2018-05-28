@@ -39,3 +39,15 @@ type CodepointRequest =
     | Tweet of id : uint64
     | User of id : uint64
     | Blank
+
+type WebData = 
+    { Codepoints : Codepoint[]
+      MentionEmbedHtml : string
+      Text : string
+      TargetEmbedHtml : string
+      ScreenName : string
+      DisplayName : string
+      Summary : string
+      ScreenNameCodepoints : Codepoint[]
+      DisplayNameCodepoints : Codepoint[]
+      SummaryCodepoints : Codepoint[] }

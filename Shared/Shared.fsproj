@@ -9,8 +9,8 @@
     <Compile Include="Unicode.fs" />
     <Compile Include="Settings.fs" />
     <Compile Include="ServiceTypes.fs" />
-    <Compile Include="Twitter.fs" />
     <Compile Include="Storage.fs" />
+    <Compile Include="Twitter.fs" />
   </ItemGroup>
 
   <ItemGroup>
