@@ -1,4 +1,6 @@
 ﻿namespace CodepointsPlz.Shared
+
+open System.IO
 open LinqToTwitter
 
 type Twitter(settings) =
@@ -52,3 +54,14 @@ type Twitter(settings) =
             where (tweet.Type = StatusType.Oembed && tweet.ID = status.StatusID && (int tweet.TweetMode) = 1)
             select tweet.EmbeddedStatus
         } |> Seq.map (fun e -> e.Html) |> Seq.head
+
+    member __.ReplyWithImage(replyToId : uint64, replyText, imageBytes) =
+        async {
+            let! media = 
+                context.Value.UploadMediaAsync(imageBytes, "image/png", "tweet_image")
+                |> Async.AwaitTask
+    
+            return!
+                context.Value.ReplyAsync(replyToId, replyText, autoPopulateReplyMetadata = true, mediaIds = [|media.MediaID|])
+                |> Async.AwaitTask
+        }
