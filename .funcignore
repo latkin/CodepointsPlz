@@ -1,3 +1,4 @@
+obj
 **/obj
 *.sln
 **/*.fsproj
@@ -8,5 +9,6 @@
 .git
 LICENSE
 Website
+Test
 **/net461/bin
 **/bin/net461
