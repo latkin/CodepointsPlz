@@ -2,6 +2,16 @@
 
 open System
 
+type DesiredAction =
+    | Reply = 1
+    | Quote = 2
+    | Tweet = 3
+
+type CodepointsPlzMention = 
+    { StatusID : uint64
+      DirectTrigger : bool
+      DesiredAction : DesiredAction }
+
 [<CLIMutable>]
 type UserMention =
     { UserID : uint64

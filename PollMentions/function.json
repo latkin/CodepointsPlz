@@ -1,7 +1,7 @@
 {
   "bindings": [
     {
-      "name": "myTimer",
+      "name": "_myTimer",
       "type": "timerTrigger",
       "direction": "in",
       "schedule": "*/10 * * * * *"
@@ -15,7 +15,7 @@
     },
     {
       "type": "table",
-      "name": "inLatestMentionRow",
+      "name": "latestMentionRow",
       "tableName": "requestdata",
       "partitionKey": "latest-mention",
       "rowKey": "latest-mention",

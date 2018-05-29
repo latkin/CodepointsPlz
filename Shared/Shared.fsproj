@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Log.fs" />
     <Compile Include="Unicode.fs" />
     <Compile Include="Settings.fs" />
     <Compile Include="ServiceTypes.fs" />

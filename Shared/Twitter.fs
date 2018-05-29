@@ -2,6 +2,7 @@
 
 open System.IO
 open LinqToTwitter
+open System.Threading
 
 type Twitter(settings) =
     let context = lazy (
@@ -65,3 +66,13 @@ type Twitter(settings) =
                 context.Value.ReplyAsync(replyToId, replyText, autoPopulateReplyMetadata = true, mediaIds = [|media.MediaID|])
                 |> Async.AwaitTask
         }
+
+    member __.WaitForRateLimiter() =
+        if context.Value.RateLimitRemaining > 5 then
+            Log.info "%d remaining on Twitter rate limiter. Not waiting." context.Value.RateLimitRemaining
+            ()
+        else
+            let sleepSec = context.Value.RateLimitReset + 1
+            Log.info "Waiting %d sec for rate limiter" sleepSec
+            Async.Sleep (1000 * sleepSec)
+            |> Async.RunSynchronously
