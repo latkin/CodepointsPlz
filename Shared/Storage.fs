@@ -7,6 +7,7 @@ open Microsoft.WindowsAzure.Storage.Table
 open Newtonsoft.Json
 
 module Storage =
+    [<AllowNullLiteral>]
     type LatestMentionRow() =
        inherit TableEntity()
        member val LatestMention : string = null with get, set

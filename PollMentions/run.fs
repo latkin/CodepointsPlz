@@ -5,21 +5,22 @@ open Microsoft.Azure.WebJobs.Host
 open CodepointsPlz.Shared
 open CodepointsPlz.Shared.Storage
 
-let Run(_myTimer: TimerInfo, 
+let Run(myTimer: TimerInfo, 
         latestMentionRow : LatestMentionRow,
         mentionQueue: ICollector<TriggerMention>,
         log: TraceWriter) =
-    
+
     async {
         log |> LogDrain.fromTraceWriter |> Log.init
-        Log.info "PollMentions: %O" latestMentionRow.LatestMention
+        Log.info "PollMentions: %A" latestMentionRow
 
         let settings = Settings.load ()
         let twitter = Twitter(settings)
 
         let latestMention =
-            latestMentionRow.LatestMention
+            latestMentionRow
             |> Option.ofObj
+            |> Option.map (fun latest -> latest.LatestMention)
             |> Option.map uint64
             |> Option.defaultValue 0uL
         
