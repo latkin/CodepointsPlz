@@ -7,7 +7,7 @@ open CodepointsPlz.Shared.Storage
 
 let Run(_myTimer: TimerInfo, 
         latestMentionRow : LatestMentionRow,
-        mentionQueue: ICollector<CodepointsPlzMention>,
+        mentionQueue: ICollector<TriggerMention>,
         log: TraceWriter) =
     
     async {
@@ -16,7 +16,6 @@ let Run(_myTimer: TimerInfo,
 
         let settings = Settings.load ()
         let twitter = Twitter(settings)
-        twitter.WaitForRateLimiter()
 
         let latestMention =
             latestMentionRow.LatestMention
@@ -29,7 +28,6 @@ let Run(_myTimer: TimerInfo,
             |> Seq.map (fun mention -> mention.StatusID)
             |> Seq.fold (fun (mentionCount, newLatestMention) id ->
                 mentionQueue.Add({ StatusID = id
-                                   DesiredAction = DesiredAction.Reply
                                    DirectTrigger = false })
                 (mentionCount + 1, max newLatestMention id)) (0, latestMention)
     
@@ -37,4 +35,5 @@ let Run(_myTimer: TimerInfo,
             do! newLatestMention |> Storage.saveLatestMention settings
 
         Log.info "Enqueued %d mentions, new latest mention is %d" newMentionCount newLatestMention
+        twitter.WaitForRateLimiter()
     } |> Async.RunSynchronously

@@ -1,6 +1,5 @@
 module ProcessMentions
 
-open System
 open System.IO
 open System.Text.RegularExpressions
 open System.Web
@@ -10,7 +9,7 @@ open CodepointsPlz.Shared
 open CodepointsPlz.Shared.Storage
 
 module CodepointRequest =
-    let private trim (s:String) = s.Trim(' ','\r', '\n')
+    let private trim (s:string) = s.Trim(' ','\r', '\n')
     let private hasUpArrow s = Regex.IsMatch(s, "\\u2B06")
     let private hasDownArrow s = Regex.IsMatch(s, "\\u2B07")
     let private hasRightArrow s = Regex.IsMatch(s, "\\u27A1")
@@ -18,8 +17,27 @@ module CodepointRequest =
         match Regex.Match(s, "\\u27A1(?:\\uFE0F)?(.*)", RegexOptions.Singleline) with
         | m when not m.Success -> None
         | m -> m.Groups.[1].Value |> trim |> Some
-       
-    let analyze (mention : Mention) =
+ 
+    let getFullMention (twitter : Twitter) id =
+        let tweet = twitter.GetTweet(id)
+        let embedHtml = twitter.GetEmbedHtml(tweet)
+        let users =
+            tweet.Entities.UserMentionEntities.ToArray()
+            |> Array.map (fun ume ->
+                { UserID = ume.Id
+                  ScreenName = ume.ScreenName })
+    
+        { Text = HttpUtility.HtmlDecode(tweet.FullText)
+          CreatedAt = tweet.CreatedAt
+          Url = sprintf "https://twitter.com/%O/status/%d" tweet.User.ScreenNameResponse tweet.StatusID
+          ScreenName = tweet.User.ScreenNameResponse
+          UserMentions = users
+          QuotedTweet = tweet.QuotedStatusID
+          InReplyToTweet = tweet.InReplyToStatusID
+          EmbedHtml = embedHtml
+          StatusID = tweet.StatusID }
+
+    let analyze mention =
         if mention.InReplyToTweet <> 0uL && hasUpArrow mention.Text then
             Tweet(mention.InReplyToTweet)
         elif mention.QuotedTweet <> 0uL && hasDownArrow mention.Text then
@@ -35,30 +53,31 @@ module CodepointRequest =
         else
             Blank
 
-let Run(mention: Mention,
-        replyQueue: ICollector<Mention>,
-        requestDataTable: ICollector<RequestDataRow>,
-        log: TraceWriter,
-        functionContext : ExecutionContext) =
+let generateReply (twitter : Twitter) (unicode : UnicodeLookup) (triggerMention : TriggerMention) (fullMention : Mention) =
+    if triggerMention.DirectTrigger then
+        Log.info "Request is a direct trigger"
+        let codepoints = unicode.GetCodepoints(fullMention.Text)
 
-    log.Info(sprintf "Processing mention %O" mention.Url)
-    log.Info(sprintf "Text: %O" mention.Text)
+        Some { Mention = fullMention
+               TargetTweetEmbedHtml = null
+               TargetText = fullMention.Text
+               Codepoints = codepoints
+               TargetUserScreenName = null
+               TargetUserDisplayName = null
+               TargetUserSummary = null
+               UserScreenNameCodepoints = null 
+               UserDisplayNameCodepoints = null
+               UserSummaryCodepoints = null }
+    else
+        let cpRequest = CodepointRequest.analyze fullMention
+        Log.info "Request parsed as %A" cpRequest
 
-    let unicode = UnicodeLookup(Path.Combine(functionContext.FunctionDirectory, "UnicodeData.txt"))
-
-    let cpRequest = CodepointRequest.analyze mention
-    log.Info(sprintf "Request parsed as %A" cpRequest)
-
-    let settings = Settings.load ()
-    let twitter = Twitter(settings)
-
-    let reply = 
         match cpRequest with
         | Blank -> None
         | PlainText(s) ->
             let codepoints = unicode.GetCodepoints(s)
 
-            Some { Mention = mention
+            Some { Mention = fullMention
                    TargetTweetEmbedHtml = null
                    TargetText = s
                    Codepoints = codepoints
@@ -74,7 +93,7 @@ let Run(mention: Mention,
             let decodedText = HttpUtility.HtmlDecode(tweet.FullText)
             let codepoints = unicode.GetCodepoints(decodedText)
 
-            Some { Mention = mention
+            Some { Mention = fullMention
                    TargetTweetEmbedHtml = embedHtml
                    TargetText = decodedText
                    Codepoints = codepoints
@@ -90,7 +109,7 @@ let Run(mention: Mention,
             let displayNameCodepoints = unicode.GetCodepoints(user.Name)
             let summaryCodepoints = unicode.GetCodepoints(user.Description)
 
-            Some { Mention = mention
+            Some { Mention = fullMention
                    TargetTweetEmbedHtml = null
                    TargetText = null
                    Codepoints = null
@@ -101,8 +120,22 @@ let Run(mention: Mention,
                    UserDisplayNameCodepoints = displayNameCodepoints
                    UserSummaryCodepoints = summaryCodepoints }
 
-    match reply with
-    | None -> ()
-    | Some(r) ->
-        requestDataTable.Add(RequestDataRow.fromReply r)
-        replyQueue.Add(mention)
+let Run(triggerMention: TriggerMention,
+        replyQueue: ICollector<Mention>,
+        requestDataTable: ICollector<RequestDataRow>,
+        log: TraceWriter,
+        functionContext : ExecutionContext) =
+
+    log |> LogDrain.fromTraceWriter |> Log.init
+    Log.info "ProcessMentions: %A" triggerMention
+
+    let settings = Settings.load ()
+    let twitter = Twitter(settings)
+    let unicode = UnicodeLookup(Path.Combine(functionContext.FunctionDirectory, "UnicodeData.txt"))
+    let fullMention = CodepointRequest.getFullMention twitter triggerMention.StatusID
+
+    generateReply twitter unicode triggerMention fullMention
+    |> Option.iter (fun reply ->
+        requestDataTable.Add(RequestDataRow.fromReply reply)
+        replyQueue.Add(fullMention)
+    )

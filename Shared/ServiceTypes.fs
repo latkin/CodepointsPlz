@@ -2,27 +2,19 @@
 
 open System
 
-type DesiredAction =
-    | Reply = 1
-    | Quote = 2
-    | Tweet = 3
-
-type CodepointsPlzMention = 
+type TriggerMention = 
     { StatusID : uint64
-      DirectTrigger : bool
-      DesiredAction : DesiredAction }
+      DirectTrigger : bool }
 
 [<CLIMutable>]
 type UserMention =
     { UserID : uint64
-      ScreenName : string
-      Start : int
-      End : int }
+      ScreenName : string }
 
 [<CLIMutable>]
 type Mention =
     { Text : string
-      UserMentions : UserMention array
+      UserMentions : UserMention[]
       QuotedTweet : uint64
       InReplyToTweet : uint64
       EmbedHtml : string
