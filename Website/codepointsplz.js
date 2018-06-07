@@ -104,7 +104,7 @@ function CodepointTable(codepoints) {
         t += "<tr>";
         t += "<td>" + FormatCodepointCode(codepoint.Codepoint) + "</td>";
         t += "<td>" + codepoint.Name + "</td>";
-        t += "<td><div class='charbox'>" + emojione.unicodeToImage(String.foobar(codepoint.Codepoint)) + "</div></td>";
+        t += "<td><div class='charbox'>" + twemoji.parse(String.foobar(codepoint.Codepoint)) + "</div></td>";
         t += "</tr>";
     });
 
