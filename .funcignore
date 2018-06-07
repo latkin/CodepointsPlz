@@ -7,6 +7,7 @@ obj
 .vs
 .vscode
 .git
+*.ps1
 LICENSE
 Website
 Test
