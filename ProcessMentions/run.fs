@@ -9,7 +9,7 @@ open CodepointsPlz.Shared
 open CodepointsPlz.Shared.Storage
 
 module CodepointRequest =
-    let private trim (s:string) = s.Trim(' ','\r', '\n')
+    let private trim (s:string) = s.Trim(' ','\r', '\n', '\u00A0')
     let private hasUpArrow s = Regex.IsMatch(s, "\\u2B06")
     let private hasDownArrow s = Regex.IsMatch(s, "\\u2B07")
     let private hasRightArrow s = Regex.IsMatch(s, "\\u27A1")
